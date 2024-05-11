@@ -23,26 +23,44 @@ class Birthday(Field):
         except ValueError:
             raise ValueError("Birthday must be in DD.MM.YYYY format")
 
+class Address(Field):
+    def __init__(self, value):
+        super().__init__(value)
+
+class Email(Field):
+    def __init__(self, email):
+        contains_at = False
+        contains_dot = False
+        for char in email:
+             if char == "@":
+                contains_at = True
+        afterAt= email.split("@")
+        if len(afterAt) > 1 and "." in afterAt[1]:
+                contains_dot = True
+
+        if contains_at and contains_dot:
+            super().__init__(email)
+        else:
+            raise ValueError("Email is not correct. Must have @ and .")   
+
 class Record:
     def __init__(self, name):
         self.name = name
         self.phone='not yet initieted'
         self.birthday = None  # New field for birthday
+        self.address= "Not yet added"  # New field for address
+        self.email= "No email added"
 
     def add_phone(self, phone):
         self.phone=Phone(phone)
 
-    def edit_phone(self, givenName, newPhoneNo):
-        if givenName == self.name:
-            self.phone= Phone(newPhoneNo)
-        else:
-            print(f'Numele dat: {givenName} nu exista!')
-
-    def find_phone(self, phoneNumber):
-        if phoneNumber in self.phones:
-            return phoneNumber
-        else:
-            print("this phone does not exist in the list")
+    def add_address(self, address:str ):
+        self.address= Address(address)
+        return (f"address added for {self.name}")
+    
+    def add_email(self, email:str):
+        self.email= Email(email)
+        return (f"email added for {self.name}")
 
     def add_birthday(self, birthday):
         self.birthday = Birthday(birthday)
@@ -58,7 +76,6 @@ class AddressBook(UserDict):
         record.add_phone(phone)
         self.data[record.name] = record
 
-        
     def get_birthdays_per_week(self):
         today= datetime.now().date()  #2024-03-18
         result={}
@@ -102,6 +119,19 @@ def input_error(func):
             return "Give me name and phone please."
 
     return inner
+
+
+def indexOutOfRange(func):
+    def inner(args, kwargs):
+        try:
+            return func(args, kwargs)
+        except IndexError as e:
+            return "index out of bounds, maybe the value does not exist"
+        except Exception as ee:
+            return ee
+
+    return inner
+
 
 def name_exists(func):
     def inner(args, kwargs):
@@ -149,30 +179,55 @@ def add_contact(args, book):
         return f"Username {name} already exists"
     book.add_record(name, phone)  
     return "Contact added."
-
-
-@name_exists
-@general_error
-def change_contact(args, book):
-    if len(args)!=2:
-        return f"ValueError: not enough values to unpack (expected 2, got {len(args)}). Ex: change Name oldNumber NewNumber"
-    name, newPhone = args
-
-    if name in book:
-        book[name].edit_phone(name, newPhone)
-        return "Contact updated."
-    else:
-        return f"Can`t find this name {name} "
     
 
 @general_error
+@general_error
+def searchBy(args, book):
+    field, *argument = args
+    argument=' '.join(argument)
+    result = ""
+    for name, record in book.items():
+        if field.lower() == "phone" and record.phone.value == argument:
+            result += f"Name: {name}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+        elif field.lower() == "name" and name == argument:
+            result += f"Name: {name}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+        elif field.lower() == "birthday" and record.birthday and record.birthday.value == datetime.strptime(argument, "%d.%m.%Y").date():  
+            result += f"Name: {name}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+        elif field.lower() == "address" and record.address.value == argument:
+            result += f"Name: {name}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+        elif field.lower() == "email" and record.email.value == argument:
+            result += f"Name: {name}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+    if result:
+        return result
+    else:
+        return "No records found for the given criteria."
+
+    
+@general_error
 @valid_name
-def phone(args,book):
-    name=args[0]
+def changeBy(args, book):
+    field, name, *new_value = args
+    new_value = ' '.join(new_value)
     if name in book:
-        return book[name].phone
+        if field.lower() == "phone":
+            book[name].phone = Phone(new_value)
+            return f"Phone updated for {name}"
+        elif field.lower() == "birthday":
+            book[name].birthday = Birthday(new_value)
+            return f"Birthday updated for {name}"
+        elif field.lower() == "address":
+            book[name].address = Address(new_value)
+            return f"Address updated for {name}"
+        elif field.lower() == "email":
+            book[name].email = Email(new_value)
+            return f"Email updated for {name}"
+        else:
+            return f"Field '{field}' cannot be changed."
     else:
         raise KeyError
+
+
 
 @general_error
 @name_exists
@@ -183,24 +238,34 @@ def addBirthday(args,book):
     else:
         raise IndexError
 
+@general_error
+@name_exists
+def addAddress(args,book):
+    name = args[0]
+    address = ' '.join(args[1:])
+    if name in book:
+        return book[name].add_address(address)
+    else:
+        raise IndexError
+
+@general_error
+@name_exists
+def addEmail(args,book):
+    name,email = args
+    if name in book:
+        return book[name].add_email(email)
+    else:
+        raise IndexError
+
+
 @valid_name
+@indexOutOfRange
 def showBirthday(args,book):
     name = args[0]
     if name in book and book[name].birthday:
         return(f"{name}'s birthday is on {book[name].birthday.value.strftime('%d.%m.%Y')}")
     else:
         raise IndexError
-
-def save_to_pickle(data, filename='data.pkl'):
-    with open(filename, 'wb') as f:
-        pickle.dump(data, f)
-
-def load_from_pickle(filename='data.pkl'):
-    try:
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
-    except FileNotFoundError:
-        return AddressBook()  # Return an empty dictionary if the file doesn't exist
 
 
 def showAllBirthdays(book):
@@ -214,6 +279,22 @@ def showAllBirthdays(book):
     else:
         return "No birthdays in the next week."
 
+
+
+############ SAVE FILE AS A DATABASE
+
+def save_to_pickle(data, filename='data.pkl'):
+    with open(filename, 'wb') as f:
+        pickle.dump(data, f)
+
+def load_from_pickle(filename='data.pkl'):
+    try:
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        return AddressBook()  # Return an empty dictionary if the file doesn't exist
+
+########### 
     
 
 def main():
@@ -227,23 +308,27 @@ def main():
             print("Good bye!")
             save_to_pickle(book)  
             break
-        elif command.lower() == "hello":
+        elif command == "hello":
             print("How can I help you?")
-        elif command.lower() == "add":
+        elif command == "add":
             print(add_contact(args, book))
-        elif command.lower() == "change":
-            print(change_contact(args, book))
-        elif command.lower() == "phone":
-            print(phone(args, book))
-        elif command.lower() == "add-birthday":
+        elif command == "change-by":
+            print(changeBy(args, book))
+        elif command == "add-birthday":
             print(addBirthday(args,book))
-        elif command.lower() == "show-birthday":
+        elif command == "add-address":
+            print(addAddress(args,book))
+        elif command == "add-email":
+            print(addEmail(args,book))
+        elif command == "show-birthday":
             print(showBirthday(args, book))
-        elif command.lower() == "birthdays":
+        elif command == "birthdays":
             print(showAllBirthdays(book))
-        elif command.lower() == "all":
+        elif command == "search-by":
+            print(searchBy(args, book))
+        elif command == "all":
             for name, record in book.items():
-               print(f"{name}: {record.phone}")
+               print(f"{name}: phone: {record.phone} / address: {record.address} / email: {record.email}")
 
         else:
             print("Invalid command.")
