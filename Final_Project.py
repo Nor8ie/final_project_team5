@@ -394,6 +394,8 @@ def main():
                 """
             \nTo continue, please choose one of the following options:\n
             ** Add a new contact                          >>> add [name] [phone-number]  
+            ** Add address to a contact                   >>> add-address [name] [address]
+            ** Add email to contact                       >>> add-email [name] [email]
             ** Edit an existing contact                   >>> edit-by [phone/email/address] [name] [phone-number/email-address/]
             ** Search for an existing contact             >>> search-by [name/email/phone] [contact-name/email-address/phone-number]
             ** Display all contacts from the phonebook    >>> all
