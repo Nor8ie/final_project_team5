@@ -205,35 +205,41 @@ def add_contact(args, book):
 @general_error
 @general_error
 def searchBy(args, book):
+    criterion, *search_value = args
+    search_value = " ".join(search_value)
     criterion = args[0].strip().lower()
-    search_value = args[1].strip()
+    result = ""
     for name, record in book.items():
         if criterion == "phone" and record.phone.value == search_value:
-            return f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+            result += f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
         elif criterion == "name" and record.name.value == search_value.lower():
-            return f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+            result += f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
         elif (
             criterion == "birthday"
             and record.birthday
             and record.birthday.value
             == datetime.strptime(search_value, "%d.%m.%Y").date()
         ):
-            return f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
-        elif criterion == "address" and record.address.value == search_value:
-            return f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
-        elif criterion == "email" and record.email.value == search_value:
-            return f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
-        # if result:
-        #     return result
-        else:
-            return "No records found for the given criteria."
+            result += f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+        elif (
+            criterion == "address"
+            and str(record.address).lower() == search_value.lower()
+        ):
+            result += f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+        elif criterion == "email" and str(record.email).lower() == search_value.lower():
+            result += f"Name: {name.title()}, Phone: {record.phone}, Birthday: {record.birthday}, Address: {record.address}, Email: {record.email}\n"
+    if result:
+        return result
+    else:
+        return "No records found for the given criteria."
 
 
 @general_error
 @valid_name
 def editBy(args, book):
     criterion, name, *new_value = args
-    name = args[1].strip().lower()
+    new_value = " ".join(new_value)
+    name = name.strip().lower()
 
     if name in book:
         if criterion == "phone":
@@ -243,7 +249,6 @@ def editBy(args, book):
             book[name].birthday = Birthday(new_value)
             return f"Birthday updated for {name.title()}\n"
         elif criterion == "address":
-            new_value = " ".join(new_value)
             book[name].address = Address(new_value)
             return f"Address updated for {name.title()}\n"
         elif criterion == "email":
@@ -274,7 +279,7 @@ def addBirthday(args, book):
 @name_exists
 def addAddress(args, book):
     name = args[0].strip().lower()
-    address = " ".join(args[1:])
+    address = " ".join(args[1:]).strip()
     try:
         name = Name(name).value
         if name in book:
@@ -389,7 +394,7 @@ def main():
                 """
             \nTo continue, please choose one of the following options:\n
             ** Add a new contact                          >>> add [name] [phone-number]  
-            ** Edit an existing contact                   >>> edit-by [name] [phone/email/address] [phone-number/email-address/]
+            ** Edit an existing contact                   >>> edit-by [phone/email/address] [name] [phone-number/email-address/]
             ** Search for an existing contact             >>> search-by [name/email/phone] [contact-name/email-address/phone-number]
             ** Display all contacts from the phonebook    >>> all
             ** Add birthday for a contact                 >>> add-birthday [name] [DD.MM.YYYY]
