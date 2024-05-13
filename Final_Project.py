@@ -75,6 +75,7 @@ class Record:
         self.birthday = None  # New field for birthday
         self.address = "Not yet added"  # New field for address
         self.email = "No email added"
+        self.notes = {}
 
     def add_phone(self, phone):
         self.phone = Phone(phone)
@@ -91,9 +92,32 @@ class Record:
         self.birthday = Birthday(birthday)
         return f"\nBirthday added for {str(self.name).title()}\n"
 
+    def add_note(self, tag="General", note="None"):
+        if tag not in self.notes:
+            self.notes[tag] = note
+            return f"Note added for {str(self.name).title()} with tag '{tag}'"
+        return f"Note with tag '{tag}' already exists. Try another tag"
+        
+
+    def edit_note(self, tag, new_note):
+        if tag in self.notes:
+                self.notes[tag] = new_note
+                return f"Note edited successfully for {str(self.name).title()} with tag '{tag}'"
+        return f"Note with tag '{tag}' not found for {str(self.name).title()}'"
+
+
+    def delete_note(self, tag):
+     if tag in self.notes:
+        self.notes.pop(tag, None)
+        return f"All notes with tag '{tag}' deleted successfully for {str(self.name).title()}"
+     return f"No notes found with tag '{tag}' for {str(self.name).title()}"
+
+
+
     def __str__(self):
         birthday_str = f", Birthday: {str(self.birthday)}" if self.birthday else ""
-        return f"\nContact name: {self.name.value}, Phone: {self.phone}: {birthday_str}"
+        notes_str = "\n".join([f"- {tag}: {note}" for tag, note in self.notes.items()])
+        return f"\nContact name: {self.name.value}, Phone: {self.phone}: {birthday_str}\nAddress: {self.address}\nEmail: {self.email}\nNotes:\n{notes_str}"
 
 
 class AddressBook(UserDict):
@@ -142,16 +166,6 @@ def indexOutOfRange(func):
             return "index out of bounds, maybe the value does not exist"
         except Exception as ee:
             return ee
-
-    return inner
-
-
-def name_exists(func):
-    def inner(args, kwargs):
-        try:
-            return func(args, kwargs)
-        except IndexError:
-            return "The name does not exist"
 
     return inner
 
@@ -261,7 +275,7 @@ def editBy(args, book):
 
 
 @general_error
-@name_exists
+@valid_name
 def addBirthday(args, book):
     name = args[0].strip().lower()
     birthDate = args[1].strip()
@@ -270,13 +284,13 @@ def addBirthday(args, book):
         if name in book:
             return book[name].add_birthday(birthDate)
         else:
-            raise IndexError
+            raise KeyError
     except NameError as e:
         return str(e)
 
 
 @general_error
-@name_exists
+@valid_name
 def addAddress(args, book):
     name = args[0].strip().lower()
     address = " ".join(args[1:]).strip()
@@ -285,13 +299,13 @@ def addAddress(args, book):
         if name in book:
             return book[name].add_address(address)
         else:
-            raise IndexError
+            raise KeyError
     except NameError as e:
         return str(e)
 
 
 @general_error
-@name_exists
+@valid_name
 def addEmail(args, book):
     name, email = args
     name = name.strip()
@@ -300,9 +314,53 @@ def addEmail(args, book):
         if name in book:
             return book[name].add_email(email)
         else:
-            raise IndexError
+            raise KeyError
     except NameError as e:
         return str(e)
+    
+@general_error   
+@valid_name
+def addNote(args,book):
+    name, tag, *note= args
+    note = " ".join(note)
+    if name in book:
+        return book[name].add_note(tag,note)
+    else:
+        raise KeyError
+    
+@general_error   
+@valid_name
+def editNote(args,book):
+    name, tag, *newNote=args
+    newNote=" ".join(newNote)
+    if name in book:
+        return book[name].edit_note(tag, newNote)
+    else:
+        raise KeyError
+
+@general_error
+def searchNote(args,book):
+    keywords=args
+    keywords=" ".join(keywords)
+    result= ""
+    found_notes = {}
+    for name, record in book.items():
+         for tag, note in record.notes.items():
+            if keywords.lower() in note.lower():
+                result+= f"{record.name.value} has tag: {tag} with note: {note} \n"
+    if found_notes is not "":
+        return result
+    else:
+        return "No keyword found"
+
+@general_error
+@valid_name
+def deleteNote(args,book):
+    name, tag= args
+    if name in book:
+        return book[name].delete_note(tag)
+    else:
+        raise KeyError
 
 
 @valid_name
@@ -312,7 +370,7 @@ def showBirthday(args, book):
     if name in book and book[name].birthday:
         return f"{name.title()}'s birthday is on {book[name].birthday.value.strftime('%d.%m.%Y')}\n"
     else:
-        raise IndexError
+        raise KeyError
 
 
 def showBirthdaysInDays(book, days_ahead):
@@ -396,6 +454,10 @@ def main():
             ** Add a new contact                          >>> add [name] [phone-number]  
             ** Add address to a contact                   >>> add-address [name] [address]
             ** Add email to contact                       >>> add-email [name] [email]
+            ** Add note to contact                        >>> add-note [name] [tag:in one word] [note:str]
+            ** Edit Note                                  >>> edit-note [name] [tag] [new note]
+            ** Search notes from all contact notes        >>> search-note [note]
+            ** Delete note from a contact                 >>> delete-note [name] [tag]
             ** Edit an existing contact                   >>> edit-by [phone/email/address] [name] [phone-number/email-address/]
             ** Search for an existing contact             >>> search-by [name/email/phone] [contact-name/email-address/phone-number]
             ** Display all contacts from the phonebook    >>> all
@@ -410,12 +472,20 @@ def main():
             print(add_contact(args, book))
         elif command == "edit-by":
             print(editBy(args, book))
+        elif command == "edit-note":
+            print(editNote(args,book))
+        elif command == "search-note":
+            print(searchNote(args,book))
+        elif command == "delete-note":
+            print(deleteNote(args,book))
         elif command == "add-birthday":
             print(addBirthday(args, book))
         elif command == "add-address":
             print(addAddress(args, book))
         elif command == "add-email":
             print(addEmail(args, book))
+        elif command == "add-note":
+            print(addNote(args,book))
         elif command == "show-birthday":
             print(showBirthday(args, book))
         elif command == "birthdays":
@@ -436,10 +506,7 @@ def main():
         elif command == "all":
             print("\n")
             for name, record in book.items():
-                print(
-                    f"Contact: {name.title():<10}| Phone: {record.phone.value:^12}| Address: {record.address.value if isinstance(record.address, Address) else 'N/A':<30}| Email: {record.email.value if isinstance(record.email, Email) else 'N/A':<25}| Birth Date: {record.birthday.value.strftime('%d.%m.%Y') if record.birthday else 'N/A':>10}"
-                )
-            print("\n")
+                print(record)
         elif command == "delete":
             print(deleteContact(args, book))  # Command for deleting contact
         else:
