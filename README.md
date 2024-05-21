@@ -12,6 +12,7 @@ Validate Contact Information: Ensure correct formatting of phone numbers and ema
 • Notes Management:
 Add Notes: Attach text-based notes to individual contacts, categorized by certain tags for easy identification.
 Search, Edit, and Delete Notes: Perform operations on notes associated with contacts.
+
 • Birthday Reminders:
 Upcoming Birthdays: Display a list of contacts whose birthdays are within a specified number of days from the current date. The user specifies this number of days for his own preference.
 
